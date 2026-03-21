@@ -11,6 +11,8 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(17)
     }
+    withSourcesJar()
+    withJavadocJar()
 }
 
 repositories {
@@ -48,6 +50,32 @@ publishing {
                 }
                 usage('java-runtime') {
                     fromResolutionResult()
+                }
+            }
+
+            pom {
+                name = 'moeum-spring-boot-starter'
+                description = 'Spring Boot Starter for MOEUM - Auto-registers DB schema to MOEUM server on application startup'
+                url = 'https://github.com/Munhangyeol/moeum-spring-boot-starter.git'
+
+                licenses {
+                    license {
+                        name = 'MIT License'
+                        url = 'https://opensource.org/licenses/MIT'
+                    }
+                }
+
+                developers {
+                    developer {
+                        id = 'Munhangyeol'
+                        name = 'Munhangyeol'
+                    }
+                }
+
+                scm {
+                    connection = 'scm:git:git://github.com/Munhangyeol/moeum-spring-boot-starter.git'
+                    developerConnection = 'scm:git:ssh://github.com/Munhangyeol/moeum-spring-boot-starter.git'
+                    url = 'https://github.com/Munhangyeol/moeum-spring-boot-starter'
                 }
             }
         }
