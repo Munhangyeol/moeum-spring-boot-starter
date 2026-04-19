@@ -6,4 +6,4 @@ before_install:
   - sdk use java 17.0.10-open
 
 install:
-  - ./gradlew build -x test
+  - ./gradlew build publishToMavenLocal -x test
