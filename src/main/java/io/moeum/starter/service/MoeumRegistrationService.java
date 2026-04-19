@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.LinkedHashSet;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -39,6 +40,7 @@ public class MoeumRegistrationService {
         try {
             log.info("[Moeum] DB 메타데이터 수집 시작...");
             List<RegisterPayload.TableInfo> tables = collectTableMetadata();
+            List<RegisterPayload.RelationInfo> relations = collectRelations(tables);
 
             RegisterPayload payload = RegisterPayload.builder()
                     .projectKey(properties.getProjectKey())
@@ -47,10 +49,11 @@ public class MoeumRegistrationService {
                     .jdbcUrl(detectJdbcUrl())
                     .username(detectUsername())
                     .tables(tables)
+                    .relations(relations)
                     .build();
 
             moeumClient.register(payload);
-            log.info("[Moeum] DTMS 등록 완료. 테이블 {}개", tables.size());
+            log.info("[Moeum] DTMS 등록 완료. 테이블 {}개, 관계 {}개", tables.size(), relations.size());
         } catch (Exception e) {
             log.warn("[Moeum] DTMS 등록 실패 (앱 구동에는 영향 없음): {}", e.getMessage());
         }
@@ -84,6 +87,38 @@ public class MoeumRegistrationService {
             }
         }
         return tables;
+    }
+
+    private List<RegisterPayload.RelationInfo> collectRelations(List<RegisterPayload.TableInfo> tables) {
+        List<RegisterPayload.RelationInfo> relations = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+
+        try (Connection conn = dataSource.getConnection()) {
+            DatabaseMetaData meta = conn.getMetaData();
+            String catalog = conn.getCatalog();
+            String schema = conn.getSchema();
+
+            for (RegisterPayload.TableInfo table : tables) {
+                try (ResultSet fkRs = meta.getImportedKeys(catalog, schema, table.getName())) {
+                    while (fkRs.next()) {
+                        String fromTable = fkRs.getString("FKTABLE_NAME");
+                        String toTable = fkRs.getString("PKTABLE_NAME");
+                        String key = fromTable + "->" + toTable;
+                        if (seen.add(key)) {
+                            relations.add(RegisterPayload.RelationInfo.builder()
+                                    .fromTable(fromTable)
+                                    .toTable(toTable)
+                                    .build());
+                        }
+                    }
+                } catch (Exception e) {
+                    log.debug("[Moeum] FK 조회 실패: table={}, error={}", table.getName(), e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[Moeum] 관계 정보 수집 실패: {}", e.getMessage());
+        }
+        return relations;
     }
 
     private Set<String> getPrimaryKeys(DatabaseMetaData meta, String catalog, String schema, String tableName) {

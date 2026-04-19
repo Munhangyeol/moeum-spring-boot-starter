@@ -15,6 +15,14 @@ public class RegisterPayload {
     private String jdbcUrl;
     private String username;
     private List<TableInfo> tables;
+    private List<RelationInfo> relations;
+
+    @Getter
+    @Builder
+    public static class RelationInfo {
+        private String fromTable;
+        private String toTable;
+    }
 
     @Getter
     @Builder
